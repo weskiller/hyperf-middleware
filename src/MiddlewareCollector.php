@@ -17,33 +17,33 @@ class MiddlewareCollector implements MetadataCollectorInterface
 
     public static function get(string $key, $default = null)
     {
-        return Arr::get(self::$collect,$key,$default);
+        return Arr::get(static::$collect,$key,$default);
     }
 
     public static function set(string $key, $value): void
     {
-        Arr::set(self::$collect,$key,$value);
+        Arr::set(static::$collect,$key,$value);
     }
 
     public static function clear(?string $key = null): void
     {
-        Arr::forget(self::$collect,$key);
+        Arr::forget(static::$collect,$key);
     }
 
     public static function serialize(): string
     {
-        return serialize(self::$collect);
+        return serialize(static::$collect);
     }
 
     public static function deserialize(string $metadata): bool
     {
-        self::$collect = unserialize($metadata,['allowed_classes' => [Middleware::class]]);
+        static::$collect = unserialize($metadata,['allowed_classes' => [Middleware::class]]);
         return true;
     }
 
     public static function list(): array
     {
-        return self::$collect;
+        return static::$collect;
     }
 
     /**
@@ -52,7 +52,7 @@ class MiddlewareCollector implements MetadataCollectorInterface
      */
     public static function collectClass(string $class,Middleware $middleware): void
     {
-        self::$collect['class'][$class][] = $middleware;
+        static::$collect['class'][$class][] = $middleware;
     }
 
     /**
@@ -62,16 +62,16 @@ class MiddlewareCollector implements MetadataCollectorInterface
      */
     public static function collectMethod(string $class, string $target,Middleware $middleware): void
     {
-        self::$collect['method'][$class][$target][] = $middleware;
+        static::$collect['method'][$class][$target][] = $middleware;
     }
 
     public static function getClass(string $class) :array
     {
-        return (array) Arr::get(self::$collect['class'],$class);
+        return (array) Arr::get(static::$collect['class'],$class);
     }
 
     public static function getMethod(string $class,string $target) :array
     {
-        return (array) Arr::get(self::$collect['method'],$class.'.'.$target);
+        return (array) Arr::get(static::$collect['method'],$class.'.'.$target);
     }
 }

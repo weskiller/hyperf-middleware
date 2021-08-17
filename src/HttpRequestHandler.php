@@ -8,7 +8,6 @@ namespace Weskiller\HyperfMiddleware;
 
 use Hyperf\Dispatcher\Exceptions\InvalidArgumentException;
 use Hyperf\Dispatcher\HttpRequestHandler as HyperfRequestHandler;
-use Hyperf\HttpServer\Annotation\Middleware;
 use Psr\Http\Message\ResponseInterface;
 
 class HttpRequestHandler extends HyperfRequestHandler
@@ -17,15 +16,17 @@ class HttpRequestHandler extends HyperfRequestHandler
     {
         if (! isset($this->middlewares[$this->offset]) && ! empty($this->coreHandler)) {
             $handler = $this->coreHandler;
-        } else {
-            /** @var Middleware|\Weskiller\HyperfMiddleware\Middleware $middleware */
-            $middleware = $this->middlewares[$this->offset];
-            $handler = $middleware->middleware;
-            is_string($handler) && $handler = $this->container->get($handler);
+            return $handler->process($request,$this->next());
         }
+        /** @var $middleware Middleware */
+        $middleware = $this->middlewares[$this->offset];
+        $handler = $this->container->get($middleware->middleware);
         if (! method_exists($handler, 'process')) {
             throw new InvalidArgumentException('Invalid middleware, it has to provide a process() method.');
         }
-        return $handler->process($request, $this->next(),... $middleware->parameters ?? []);
+        if($middleware->parameters) {
+            return $handler->process($request,$this->next(),...$middleware->parameters);
+        }
+        return $handler->process($request,$this->next());
     }
 }
