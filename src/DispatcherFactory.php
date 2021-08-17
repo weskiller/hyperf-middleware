@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Weskiller\HyperfMiddleware;
 
+use FastRoute\DataGenerator\GroupCountBased as DataGenerator;
+use FastRoute\RouteParser\Std;
 use Hyperf\Di\Annotation\MultipleAnnotationInterface;
 use Hyperf\Di\Exception\ConflictAnnotationException;
 use Hyperf\Di\ReflectionManager;
@@ -25,6 +27,20 @@ use ReflectionMethod;
 
 class DispatcherFactory extends HttDispatcherFactory
 {
+    /** @var RouteCollector[] */
+    protected $routers;
+
+    public function getRouter(string $serverName): RouteCollector
+    {
+        if (isset($this->routers[$serverName])) {
+            return $this->routers[$serverName];
+        }
+
+        $parser = new Std();
+        $generator = new DataGenerator();
+        return $this->routers[$serverName] = new RouteCollector($parser, $generator, $serverName);
+    }
+
     /**
      * @throws ConflictAnnotationException
      */
