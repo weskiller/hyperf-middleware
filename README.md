@@ -1,12 +1,13 @@
+:q!
 # 介绍
 [Hyperf](https://github.com/hyperf/hyperf) 组件，支持中间件传参
 
 # 注意
 
-###中间件可以重复执行
+### 中间件可以重复执行
 [Hyperf](https://github.com/hyperf/hyperf) 会将同一个路由上重复中间件去重，在带参情况下，这一策略不适用。
-###核心实现被替换
-本组件通过 dependencies.php 替代了hyperf/http-server, hyperf/router 核心的实现。可能会副作用。
+### 核心实现被替换
+本组件通过 dependencies.php 替代了hyperf/http-server, hyperf/router 核心的实现。可能存在副作用。
 
 # 使用
 
@@ -33,7 +34,7 @@
         ]
     ],
 ```
-###使用路由配置文件定义    
+### 使用路由配置文件定义    
 ```php
 <?php
 
@@ -51,7 +52,7 @@
     ]]);
 ```
 
-###使用注解定义
+### 使用注解定义
 ```php
 <?php
     
