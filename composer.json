@@ -1,0 +1,22 @@
+{
+    "name": "weskiller/hyperf-middleware",
+    "type": "library",
+    "license": "mit",
+    "autoload": {
+        "psr-4": {
+            "Weskiller\\HyperfMiddleware\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "weskiller",
+            "email": "weskiller@vip.qq.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.0",
+        "hyperf/http-server": "^2.2.4",
+        "hyperf/di": "^2.2.4"
+    }
+}
