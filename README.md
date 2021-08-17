@@ -1,4 +1,3 @@
-:q!
 # 介绍
 [Hyperf](https://github.com/hyperf/hyperf) 组件，支持中间件传参
 
