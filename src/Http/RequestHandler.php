@@ -3,15 +3,23 @@
 declare(strict_types=1);
 
 
-namespace Weskiller\HyperfMiddleware;
+namespace Weskiller\HyperfMiddleware\Http;
 
 
 use Hyperf\Dispatcher\Exceptions\InvalidArgumentException;
 use Hyperf\Dispatcher\HttpRequestHandler as HyperfRequestHandler;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
+use Weskiller\HyperfMiddleware\Middleware\Middleware;
 
-class HttpRequestHandler extends HyperfRequestHandler
+class RequestHandler extends HyperfRequestHandler
 {
+    public function __construct($coreHandler, ContainerInterface $container)
+    {
+        $this->coreHandler = $coreHandler;
+        $this->container = $container;
+    }
+
     protected function handleRequest($request) :ResponseInterface
     {
         if (! isset($this->middlewares[$this->offset]) && ! empty($this->coreHandler)) {

@@ -9,7 +9,7 @@ declare(strict_types=1);
  * @contact  group@hyperf.io
  * @license  https://github.com/hyperf/hyperf/blob/master/LICENSE
  */
-namespace Weskiller\HyperfMiddleware;
+namespace Weskiller\HyperfMiddleware\Middleware;
 
 use Attribute;
 use Hyperf\Di\Annotation\AbstractMultipleAnnotation;
@@ -33,7 +33,7 @@ class Middleware extends AbstractMultipleAnnotation
 
     public function collectClass(string $className): void
     {
-        MiddlewareCollector::collectClass($className,$this);
+        Collector::collectClass($className,$this);
     }
 
     /**
@@ -45,7 +45,7 @@ class Middleware extends AbstractMultipleAnnotation
         if($target === null) {
             throw new RuntimeException(sprintf('collect %s method %s error',$className,$target));
         }
-        MiddlewareCollector::collectMethod($className,$target,$this);
+        Collector::collectMethod($className,$target,$this);
     }
 
     public function collectProperty(string $className, ?string $target): void

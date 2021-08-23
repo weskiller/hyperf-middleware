@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Weskiller\HyperfMiddleware;
+namespace Weskiller\HyperfMiddleware\Http;
 
 use FastRoute\DataGenerator\GroupCountBased as DataGenerator;
 use FastRoute\RouteParser\Std;
@@ -20,17 +20,18 @@ use Hyperf\HttpServer\Annotation\PatchMapping;
 use Hyperf\HttpServer\Annotation\PostMapping;
 use Hyperf\HttpServer\Annotation\PutMapping;
 use Hyperf\HttpServer\Annotation\RequestMapping;
-use Hyperf\HttpServer\Router\DispatcherFactory as HttDispatcherFactory;
+use Hyperf\HttpServer\Router\DispatcherFactory as HttpDispatcherFactory;
 use Hyperf\Utils\Arr;
 use Hyperf\Utils\Str;
 use ReflectionMethod;
+use Weskiller\HyperfMiddleware\Route\Collector;
 
-class DispatcherFactory extends HttDispatcherFactory
+class DispatcherFactory extends HttpDispatcherFactory
 {
-    /** @var RouteCollector[] */
+    /** @var Collector[] */
     protected $routers;
 
-    public function getRouter(string $serverName): RouteCollector
+    public function getRouter(string $serverName): Collector
     {
         if (isset($this->routers[$serverName])) {
             return $this->routers[$serverName];
@@ -38,7 +39,7 @@ class DispatcherFactory extends HttDispatcherFactory
 
         $parser = new Std();
         $generator = new DataGenerator();
-        return $this->routers[$serverName] = new RouteCollector($parser, $generator, $serverName);
+        return $this->routers[$serverName] = new Collector($parser, $generator, $serverName);
     }
 
     /**
@@ -142,7 +143,7 @@ class DispatcherFactory extends HttDispatcherFactory
     {
         return array_merge(
             $this->handleMiddleware($meta),
-            MiddlewareCollector::getMethod($class,$method),
+            Collector::getMethod($class,$method),
         );
     }
 
@@ -153,7 +154,7 @@ class DispatcherFactory extends HttDispatcherFactory
     {
         return array_merge(
             $this->handleMiddleware($meta),
-            MiddlewareCollector::getClass($class),
+            Collector::getClass($class),
         );
     }
 

@@ -12,16 +12,18 @@
 
 ### 配置
 * 修改 dependencies.php 文件, 替换框架组件
+
 ```php
 <?php
     
     return [
-        Hyperf\HttpServer\Router\DispatcherFactory::class =>  Weskiller\HyperfMiddleware\DispatcherFactory::class,
-        Hyperf\Dispatcher\HttpDispatcher::class => Weskiller\HyperfMiddleware\HttpDispatcher::class,
+        Hyperf\HttpServer\Router\DispatcherFactory::class =>  \Weskiller\HyperfMiddleware\Http\DispatcherFactory::class,
+        Hyperf\Dispatcher\HttpDispatcher::class => \Weskiller\HyperfMiddleware\Http\Dispatcher::class,
     ];
 ```
 
 * 修改 annotations.php 文件, 新增中间件收集器
+
 ```php
 <?php
     'scan' => [
@@ -29,20 +31,16 @@
         ...
         */
         'collectors' => [
-            Weskiller\HyperfMiddleware\MiddlewareCollector::class,
+            \Weskiller\HyperfMiddleware\Middleware\Collector::class,
         ]
     ],
 ```
-### 使用路由配置文件定义    
+### 使用路由配置文件定义
+
 ```php
 <?php
 
-    use Hyperf\HttpServer\Router\Router;
-    use App\Controller\DeveloperController;
-    use App\Middleware\CommonMiddleware;
-    use App\Middleware\NeedParametersMiddleware;
-    use App\Middleware\NeedTwoParameterMiddleware;
-    use Weskiller\HyperfMiddleware\Middleware;
+    use App\Controller\DeveloperController;use App\Middleware\CommonMiddleware;use App\Middleware\NeedParametersMiddleware;use App\Middleware\NeedTwoParameterMiddleware;use Hyperf\HttpServer\Router\Router;use Weskiller\HyperfMiddleware\Middleware\Middleware;
 
     Router::get('/debug',[DeveloperController::class,'index'],['middleware' => [
         CommonMiddleware::class,                                                        //默认
@@ -52,17 +50,13 @@
 ```
 
 ### 使用注解定义
+
 ```php
 <?php
     
     namespace App\Controller;
     
-    use Hyperf\HttpServer\Annotation\Controller;
-    use App\Middleware\CommonMiddleware;
-    use App\Middleware\NeedParametersMiddleware;
-    use App\Middleware\NeedTwoParameterMiddleware;
-    use Hyperf\HttpServer\Annotation\Middleware;
-    use Weskiller\HyperfMiddleware\Middleware as ParameterMiddleware;
+    use App\Middleware\CommonMiddleware;use App\Middleware\NeedParametersMiddleware;use App\Middleware\NeedTwoParameterMiddleware;use Hyperf\HttpServer\Annotation\Controller;use Hyperf\HttpServer\Annotation\Middleware;use Weskiller\HyperfMiddleware\Middleware\Middleware as ParameterMiddleware;
 
     /**
      * @Controller(prefix="/")

@@ -16,7 +16,8 @@
     "minimum-stability": "stable",
     "require": {
         "php": "^8.0",
-        "hyperf/http-server": "^2.2.4",
-        "hyperf/di": "^2.2.4"
+        "hyperf/http-server": "^2.2",
+        "hyperf/di": "^2.2.4",
+        "hyperf/config": "^2.2"
     }
 }

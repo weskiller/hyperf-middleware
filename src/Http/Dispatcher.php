@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 
-namespace Weskiller\HyperfMiddleware;
+namespace Weskiller\HyperfMiddleware\Http;
 
 
 use Hyperf\Dispatcher\HttpDispatcher as HyperfHttpDispatcher;
@@ -12,7 +12,7 @@ use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\MiddlewareInterface;
 
-class HttpDispatcher extends HyperfHttpDispatcher
+class Dispatcher extends HyperfHttpDispatcher
 {
     /**
      * @var ContainerInterface
@@ -34,7 +34,7 @@ class HttpDispatcher extends HyperfHttpDispatcher
          * @param array $middlewares
          * @param MiddlewareInterface $coreHandler
          */
-        [$request, $middlewares, $coreHandler] = $params;
-        return (new HttpRequestHandler($middlewares, $coreHandler, $this->container))->handle($request);
+        [$request, $coreHandler] = $params;
+        return (new RequestHandler($middlewares, $coreHandler, $this->container))->handle($request);
     }
 }
