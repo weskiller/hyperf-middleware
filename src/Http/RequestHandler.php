@@ -14,10 +14,9 @@ use Weskiller\HyperfMiddleware\Middleware\Middleware;
 
 class RequestHandler extends HyperfRequestHandler
 {
-    public function __construct($coreHandler, ContainerInterface $container)
+    public function __construct(array $middlewares, $coreHandler, ContainerInterface $container)
     {
-        $this->coreHandler = $coreHandler;
-        $this->container = $container;
+        parent::__construct($middlewares, $coreHandler, $container);
     }
 
     protected function handleRequest($request) :ResponseInterface

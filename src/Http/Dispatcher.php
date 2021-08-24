@@ -34,7 +34,7 @@ class Dispatcher extends HyperfHttpDispatcher
          * @param array $middlewares
          * @param MiddlewareInterface $coreHandler
          */
-        [$request, $coreHandler] = $params;
+        [$request, $middlewares,$coreHandler] = $params;
         return (new RequestHandler($middlewares, $coreHandler, $this->container))->handle($request);
     }
 }

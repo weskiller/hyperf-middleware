@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Weskiller\HyperfMiddleware\Http;
 
 use FastRoute\DataGenerator\GroupCountBased as DataGenerator;
+use FastRoute\Dispatcher;
 use FastRoute\RouteParser\Std;
 use Hyperf\Di\Annotation\MultipleAnnotationInterface;
 use Hyperf\Di\Exception\ConflictAnnotationException;
@@ -14,8 +15,6 @@ use Hyperf\HttpServer\Annotation\Controller;
 use Hyperf\HttpServer\Annotation\DeleteMapping;
 use Hyperf\HttpServer\Annotation\GetMapping;
 use Hyperf\HttpServer\Annotation\Mapping;
-use Hyperf\HttpServer\Annotation\Middleware;
-use Hyperf\HttpServer\Annotation\Middlewares;
 use Hyperf\HttpServer\Annotation\PatchMapping;
 use Hyperf\HttpServer\Annotation\PostMapping;
 use Hyperf\HttpServer\Annotation\PutMapping;
@@ -25,9 +24,12 @@ use Hyperf\Utils\Arr;
 use Hyperf\Utils\Str;
 use ReflectionMethod;
 use Weskiller\HyperfMiddleware\Route\Collector;
+use Weskiller\HyperfMiddleware\Middleware\Collector as MiddlewareCollector;
+use Weskiller\HyperfMiddleware\Middleware\Middleware;
 
 class DispatcherFactory extends HttpDispatcherFactory
 {
+
     /** @var Collector[] */
     protected $routers;
 
@@ -48,17 +50,16 @@ class DispatcherFactory extends HttpDispatcherFactory
     protected function initAnnotationRoute(array $collector): void
     {
         foreach ($collector as $className => $metadata) {
+            $middlewares = MiddlewareCollector::getClassMiddlewares($className);
             if (isset($metadata['_c'][AutoController::class])) {
                 if ($this->hasControllerAnnotation($metadata['_c'])) {
                     $message = sprintf('AutoController annotation can\'t use with Controller annotation at the same time in %s.', $className);
                     throw new ConflictAnnotationException($message);
                 }
-                $middlewares = $this->mergeClassMiddleware($className,$metadata['_c']);
-                $this->handleAutoController($className, $metadata['_c'][AutoController::class], $middlewares, $metadata['_m'] ?? []);
+                $this->handleAutoController($className, $metadata['_c'][AutoController::class], $metadata['_m'] ?? []);
             }
             if (isset($metadata['_c'][Controller::class])) {
-                $middlewares = $this->mergeClassMiddleware($className,$metadata['_c']);
-                $this->handleController($className, $metadata['_c'][Controller::class], $metadata['_m'] ?? [], $middlewares);
+                $this->handleController($className, $metadata['_c'][Controller::class], $metadata['_m'] ?? []);
             }
         }
     }
@@ -67,7 +68,7 @@ class DispatcherFactory extends HttpDispatcherFactory
      * Register route according to AutoController annotation.
      *
      */
-    protected function handleAutoController(string $className, AutoController $annotation, array $middlewares = [], array $methodMetadata = []): void
+    protected function handleAutoController(string $className, AutoController $annotation, array $methodMetadata = [], array $deprecated = []): void
     {
         $class = ReflectionManager::reflectClass($className);
         $methods = $class->getMethods(ReflectionMethod::IS_PUBLIC);
@@ -83,9 +84,6 @@ class DispatcherFactory extends HttpDispatcherFactory
             }
             $options = $annotation->options;
             $path = $this->parsePath($prefix, $method);
-
-            $options['middleware'] = array_merge($middlewares,$this->mergeMethodMiddleware($className,$methodName,$methodMetadata));
-
             $router->addRoute($autoMethods, $path, [$className, $methodName], $options);
 
             if (Str::endsWith($path, $defaultAction)) {
@@ -99,9 +97,8 @@ class DispatcherFactory extends HttpDispatcherFactory
      * Register route according to Controller and XxxMapping annotations.
      * Including RequestMapping, GetMapping, PostMapping, PutMapping, PatchMapping, DeleteMapping.
      *
-     * @throws ConflictAnnotationException
      */
-    protected function handleController(string $className, Controller $annotation, array $methodMetadata, array $middlewares = []): void
+    protected function handleController(string $className, Controller $annotation, array $methodMetadata, array $deprecated = []): void
     {
         if (! $methodMetadata) {
             return;
@@ -119,81 +116,23 @@ class DispatcherFactory extends HttpDispatcherFactory
         ];
 
         foreach ($methodMetadata as $methodName => $values) {
-            $options = $annotation->options;
-            $options['middleware'] = array_merge($middlewares,$this->mergeMethodMiddleware($className,$methodName,$values));
+            $annotationOptions = $annotation->options;
             foreach ($mappingAnnotations as $mappingAnnotation) {
                 /** @var Mapping $mapping */
                 if ($mapping = $values[$mappingAnnotation] ?? null) {
                     if (!isset($mapping->path, $mapping->methods, $mapping->options)) {
                         continue;
                     }
-                    $methodOptions = Arr::merge($options, $mapping->options);
-                    $methodOptions['middleware'] = $options['middleware'];
-                    $path = $this->getUri($prefix,$mapping->path);
-                    $router->addRoute($mapping->methods, $path, [$className, $methodName], $methodOptions);
+                    $options = Arr::merge($annotationOptions, $mapping->options);
+                    $path = Collector::prefixUri($prefix,$mapping->path);
+                    $router->addRoute($mapping->methods, $path, [$className, $methodName], $options);
                 }
             }
         }
     }
 
-    /**
-     * @throws ConflictAnnotationException
-     */
-    protected function mergeMethodMiddleware(string $class,string $method,array $meta) :array
-    {
-        return array_merge(
-            $this->handleMiddleware($meta),
-            Collector::getMethod($class,$method),
-        );
-    }
-
-    /**
-     * @throws ConflictAnnotationException
-     */
-    protected function mergeClassMiddleware(string $class,array $meta):array
-    {
-        return array_merge(
-            $this->handleMiddleware($meta),
-            Collector::getClass($class),
-        );
-    }
-
-    /**
-     * @throws ConflictAnnotationException
-     */
-    protected function handleMiddleware(array $metadata): array
-    {
-        /** @var null|Middlewares $middlewares */
-        $middlewares = $metadata[Middlewares::class] ?? null;
-        /** @var null|MultipleAnnotationInterface $middleware */
-        $middleware = $metadata[Middleware::class] ?? null;
-        if ($middleware instanceof MultipleAnnotationInterface) {
-            $middleware = $middleware->toAnnotations();
-        }
-
-        if (! $middlewares && ! $middleware) {
-            return [];
-        }
-        if ($middlewares && $middleware) {
-            throw new ConflictAnnotationException('Could not use @Middlewares and @Middleware annotation at the same times at same level.');
-        }
-
-        return (array)($middlewares->middlewares ?? $middleware);
-    }
-
     public function isMagicMethod(string $method) :bool
     {
         return str_starts_with($method, '__');
-    }
-
-    public function getUri(string $prefix,string $path) :string
-    {
-        if ($path === '') {
-            return $prefix;
-        }
-        if (str_starts_with($prefix,'/')) {
-            return $path;
-        }
-        return $prefix . '/' . $path;
     }
 }

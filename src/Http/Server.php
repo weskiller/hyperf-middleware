@@ -7,13 +7,14 @@ namespace Weskiller\HyperfMiddleware\Http;
 
 use Hyperf\Contract\ConfigInterface;
 use Hyperf\ExceptionHandler\ExceptionHandlerDispatcher;
-use Hyperf\HttpServer\MiddlewareManager;
+use Hyperf\HttpServer\Contract\CoreMiddlewareInterface;
 use Hyperf\HttpServer\ResponseEmitter;
 use Hyperf\HttpServer\Router\Dispatched;
 use Hyperf\HttpServer\Server as HyperfServer;
 use Hyperf\Utils\Coordinator\Constants;
 use Hyperf\Utils\Coordinator\CoordinatorManager;
 use Psr\Container\ContainerInterface;
+
 use Throwable;
 use Weskiller\HyperfMiddleware\Middleware\Collector;
 
@@ -33,10 +34,21 @@ class Server extends HyperfServer
         $this->serverName = $serverName;
         $this->coreMiddleware = $this->createCoreMiddleware();
         $this->routerDispatcher = $this->createDispatcher($serverName);
-        Collector::compile($serverName);
-        $this->middlewares = Collector::global($this->serverName);
+
+        $this->middlewares = Collector::getGlobalMiddlewares($serverName);
         $config = $this->container->get(ConfigInterface::class);
         $this->exceptionHandlers = $config->get('exceptions.handler.' . $serverName, $this->getDefaultExceptionHandler());
+    }
+
+    protected function createDispatcher(string $serverName): \FastRoute\Dispatcher
+    {
+        $factory = $this->container->get(DispatcherFactory::class);
+        return $factory->getDispatcher($serverName);
+    }
+
+    protected function createCoreMiddleware(): CoreMiddlewareInterface
+    {
+        return make(CoreMiddleware::class, [$this->container, $this->serverName]);
     }
 
 
@@ -52,7 +64,7 @@ class Server extends HyperfServer
             $dispatched = $psr7Request->getAttribute(Dispatched::class);
             $middlewares = $this->middlewares;
             if ($dispatched->isFound()) {
-                $middlewares = Collector::middlewares($this->serverName,$dispatched->handler->route, $psr7Request->getMethod());
+                $middlewares = Collector::getRouteMiddlewares($this->serverName,$dispatched->handler->route, $psr7Request->getMethod());
             }
 
             $psr7Response = $this->dispatcher->dispatch($psr7Request, $middlewares, $this->coreMiddleware);

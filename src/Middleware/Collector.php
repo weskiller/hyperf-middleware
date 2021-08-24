@@ -8,15 +8,13 @@ namespace Weskiller\HyperfMiddleware\Middleware;
 use Hyperf\Contract\ConfigInterface;
 use Hyperf\Di\MetadataCollectorInterface;
 use Hyperf\Utils\ApplicationContext;
-use Hyperf\Utils\Arr;
 use JetBrains\PhpStorm\Pure;
 
 class Collector implements MetadataCollectorInterface
 {
     protected static array $global = [];
-    protected static array $collect = [];
-    protected static array $servers = [];
-    protected static array $compiled = [];
+    protected static array $collect = [ 'c' => [],'m' => [] ];
+    protected static array $routes = [];
 
     public static function get(string $key, $default = null)
     {
@@ -31,6 +29,11 @@ class Collector implements MetadataCollectorInterface
     {
     }
 
+    public static function list() :array
+    {
+        return self::$collect;
+    }
+
     public static function serialize(): string
     {
         return serialize(self::$collect);
@@ -38,20 +41,15 @@ class Collector implements MetadataCollectorInterface
 
     public static function deserialize(string $metadata): bool
     {
-        static::$collect = unserialize($metadata,['allowed_classes' => [Middleware::class,WithoutMiddleware::class]]);
+        static::$collect = unserialize($metadata,['allowed_classes' => [Middleware::class,Exclude::class,Expect::class,Without::class]]);
         return true;
-    }
-
-    public static function list(): array
-    {
-        return [];
     }
 
     /**
      * @param string $class
-     * @param Middleware|WithoutMiddleware $middleware
+     * @param Middleware|Exclude|Expect|Without $middleware
      */
-    public static function collectClass(string $class, Middleware|WithoutMiddleware $middleware): void
+    public static function collectClass(string $class,  Middleware|Exclude|Expect|Without $middleware): void
     {
         static::$collect['c'][$class][] = $middleware;
     }
@@ -60,82 +58,81 @@ class Collector implements MetadataCollectorInterface
      * @param string $class
      *
      * @param string $method
-     * @param Middleware|WithoutMiddleware $middleware
+     * @param Middleware|Exclude|Expect|Without $middleware
      */
-    public static function collectMethod(string $class, string $method, Middleware|WithoutMiddleware $middleware): void
+    public static function collectMethod(string $class, string $method, Middleware|Exclude|Expect|Without $middleware): void
     {
-        static::$collect['m'][$class][$method][] = $middleware;
+        self::$collect['m'][$class][$method][] = $middleware;
     }
 
-
-    public static function addRouteMiddlewares(string $server,string $class,string $method,array $middlewares) :void
+    public static function getMethodMiddlewares(string $class,string $method) :array
     {
-        foreach ($middlewares as $middleware) {
-            self::$servers[$server][$class][$method][] = $middleware;
-        }
+        return self::$collect['m'][$class][$method] ?? [];
     }
 
-    public static function global(string $server) :array
+    public static function getClassMiddlewares(string $class) :array
     {
-        if(isset(self::$global[$server])) {
+        return self::$collect['c'][$class] ?? [];
+    }
+
+    public static function getGlobalMiddlewares(string $server) :array
+    {
+        if(!isset(self::$global[$server])) {
             self::$global[$server] = array_map(
                 [static::class,'instanceMiddleWare'],
-                (array) ApplicationContext::getContainer()->get(ConfigInterface::class)->get('middlewares')
+                (array) ApplicationContext::getContainer()->get(ConfigInterface::class)->get('middlewares.' . $server)
             );
         }
         return self::$global[$server];
     }
 
-    public static function compile(string $server) :array
+    public static function addRouteMiddlewares(string $server,string $route,string $routeMethod,array $middlewares) :void
     {
-        if(!isset(self::$compiled[$server])) {
-            $globalMiddlewares = self::global($server);
-            collect(self::$servers[$server] ?? [])
-                ->map(static function (array $methods, $class) use ($globalMiddlewares, $server) {
-                    $classMiddlewares = self::$collect['c'][$class];
-                    collect($methods)
-                        ->map(static function (array $routeMiddlewares, string $method) use (
-                            $server,
-                            $globalMiddlewares,
-                            $classMiddlewares,
-                            $class
-                        ) {
-                            $annotationMiddlewares = self::$collect['m'][$class][$method];
-                            $middlewares = collect(array_merge(
-                                $globalMiddlewares,
-                                $classMiddlewares,
-                                $routeMiddlewares,
-                                $annotationMiddlewares
-                            ));
-                            $without = $middlewares
-                                ->filter(
-                                    fn(Middleware|WithoutMiddleware $middleware) => $middleware instanceof
-                                        WithoutMiddleware
-                                );
-                            if ($without->isEmpty()) {
-                                self::$compiled[$server][$class][$method] = $middlewares->all();
-                            } else {
-                                $excludes = $without
-                                    ->map(fn(WithoutMiddleware $middleware) => $middleware->middleware)
-                                    ->unique()->flip();
-                                self::$compiled[$server][$class][$method] = $middlewares->filter(
-                                    fn(Middleware|WithoutMiddleware $middleware) => ($middleware instanceof Middleware)
-                                        && $excludes->has($middleware->middleware) === false
-                                )->all();
-                            }
-                        });
-                });
-        }
-        return self::$compiled[$server];
+        self::$routes[$server][$route][$routeMethod] = self::compose($middlewares);
     }
 
-    public static function middlewares(string $server,string $class,string $method) :array
+    /**
+     * @param  Middleware[]|Exclude[]|Expect[]|Without[] $middlewares
+     */
+    public static function compose(array $middlewares) :array
     {
-        return self::compile($server)[$class][$method] ?? [];
+        $needs = collect();
+        $excludes = collect();
+        $expects = collect();
+        foreach ($middlewares as $middleware) {
+            switch ($middleware::class) {
+                case Middleware::class:
+                    $needs[] = $middleware;
+                    break;
+                case Exclude::class:
+                    collect($middleware->middlewares)->map(fn(string $name) => $excludes->offsetSet($name,true));
+                    break;
+                case Expect::class:
+                    collect($middleware->middlewares)->map(fn(string $name) => $expects->offsetSet($name,true));
+                    break;
+                case Without::class:
+                    return [];
+            }
+        }
+        if($needs->isEmpty()) {
+            return [];
+        }
+        if($excludes->isNotEmpty()) {
+            $needs = $needs->filter(fn(Middleware $need) => !$excludes->has($need->middleware));
+        }
+        if($expects->isNotEmpty()) {
+            $needs = $needs->filter(fn(Middleware $need) => $expects->has($need->middleware));
+        }
+        return $needs->all();
+    }
+
+    public static function getRouteMiddlewares(string $server,string $method,string $route) :array
+    {
+        return self::$routes[$server][$method][$route] ?? [];
     }
 
     #[Pure]
-    public static function instanceMiddleWare(string|array|Middleware|WithoutMiddleware $middleware) :Middleware|WithoutMiddleware
+    public static function instanceMiddleWare(string|array|Middleware|Exclude|Expect|Without $middleware) :Middleware|Exclude|Expect|Without
     {
         if(is_string($middleware)) {
             return new Middleware($middleware);
