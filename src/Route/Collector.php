@@ -10,7 +10,7 @@ use Weskiller\HyperfMiddleware\Middleware\Collector as MiddleCollector;
 use Weskiller\HyperfMiddleware\Middleware\Exclude;
 use Weskiller\HyperfMiddleware\Middleware\Expect;
 use Weskiller\HyperfMiddleware\Middleware\Middleware;
-use Weskiller\HyperfMiddleware\Middleware\Without;
+use Weskiller\HyperfMiddleware\Middleware\Direct;
 use Closure;
 use RuntimeException;
 use Throwable;
@@ -96,17 +96,17 @@ class Collector extends HyperfRouteCollector
                 unset($options[$key]);
             }
         }
-        if(isset($options[Without::Option])) {
-            $middlewares[] = ApplicationContext::getContainer()->get(Without::class);
-            unset($options[Without::Option]);
+        if(isset($options[Direct::Option])) {
+            $middlewares[] = ApplicationContext::getContainer()->get(Direct::class);
+            unset($options[Direct::Option]);
         }
         if(isset($options[Exclude::Option])) {
             $middlewares[] = new Exclude((array) $options[Exclude::Option]);
-            unset($options[Without::Option]);
+            unset($options[Direct::Option]);
         }
         if(isset($options[Expect::Option])) {
             $middlewares[] = new Expect((array) $options[Expect::Option]);
-            unset($options[Without::Option]);
+            unset($options[Direct::Option]);
         }
 
         return $middlewares;

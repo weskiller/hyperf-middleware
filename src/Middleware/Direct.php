@@ -12,7 +12,7 @@ use Hyperf\Di\Annotation\AnnotationInterface;
  * @Annotation 
  */
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
-class Without implements AnnotationInterface
+class Direct implements AnnotationInterface
 {
     public function __construct() {}
 

@@ -41,15 +41,15 @@ class Collector implements MetadataCollectorInterface
 
     public static function deserialize(string $metadata): bool
     {
-        static::$collect = unserialize($metadata,['allowed_classes' => [Middleware::class,Exclude::class,Expect::class,Without::class]]);
+        static::$collect = unserialize($metadata,['allowed_classes' => [Middleware::class,Exclude::class,Expect::class,Direct::class]]);
         return true;
     }
 
     /**
      * @param string $class
-     * @param Middleware|Exclude|Expect|Without $middleware
+     * @param Middleware|Exclude|Expect|Direct $middleware
      */
-    public static function collectClass(string $class,  Middleware|Exclude|Expect|Without $middleware): void
+    public static function collectClass(string $class,  Middleware|Exclude|Expect|Direct $middleware): void
     {
         static::$collect['c'][$class][] = $middleware;
     }
@@ -58,9 +58,9 @@ class Collector implements MetadataCollectorInterface
      * @param string $class
      *
      * @param string $method
-     * @param Middleware|Exclude|Expect|Without $middleware
+     * @param Middleware|Exclude|Expect|Direct $middleware
      */
-    public static function collectMethod(string $class, string $method, Middleware|Exclude|Expect|Without $middleware): void
+    public static function collectMethod(string $class, string $method, Middleware|Exclude|Expect|Direct $middleware): void
     {
         self::$collect['m'][$class][$method][] = $middleware;
     }
@@ -92,7 +92,7 @@ class Collector implements MetadataCollectorInterface
     }
 
     /**
-     * @param  Middleware[]|Exclude[]|Expect[]|Without[] $middlewares
+     * @param  Middleware[]|Exclude[]|Expect[]|Direct[] $middlewares
      */
     public static function compose(array $middlewares) :array
     {
@@ -110,7 +110,7 @@ class Collector implements MetadataCollectorInterface
                 case Expect::class:
                     collect($middleware->middlewares)->map(fn(string $name) => $expects->offsetSet($name,true));
                     break;
-                case Without::class:
+                case Direct::class:
                     return [];
             }
         }
@@ -132,7 +132,7 @@ class Collector implements MetadataCollectorInterface
     }
 
     #[Pure]
-    public static function instanceMiddleWare(string|array|Middleware|Exclude|Expect|Without $middleware) :Middleware|Exclude|Expect|Without
+    public static function instanceMiddleWare(string|array|Middleware|Exclude|Expect|Direct $middleware) :Middleware|Exclude|Expect|Direct
     {
         if(is_string($middleware)) {
             return new Middleware($middleware);
