@@ -4,7 +4,7 @@
 # 注意
 
 ### 框架核心组件被替换
-通过继承类的方式替换了hyperf/http-server，hyperf/Router 组件的核心实现。可能存在副作用。
+* 通过继承类的方式替换了hyperf/http-server，hyperf/Router 组件的核心实现。可能存在副作用。
 
 ### 中间件不兼容
 * 不兼容 Hyperf\HttpServer\Annotation\Middleware，需要使用 Weskiller\HyperfMiddleware\Middleware 替换
