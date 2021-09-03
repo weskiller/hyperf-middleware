@@ -6,6 +6,8 @@
 ### 框架核心组件被替换
 * 通过继承类的方式替换了hyperf/http-server，hyperf/Router 组件的核心实现。可能存在副作用。
 
+### 路由配置格式变更
+* 路由参数 `middleware` 
 ### 中间件不兼容
 * 不兼容 Hyperf\HttpServer\Annotation\Middleware，需要使用 Weskiller\HyperfMiddleware\Middleware 替换
 * [Hyperf](https://github.com/hyperf/hyperf) 会将同一个路由上重复中间件去重，在带参情况下，这一策略不适用。
@@ -17,6 +19,11 @@
 ### 路由
 * 将强制使用 `/` 分割路由
 
+### WebSocket
+* 如果使用了 `hyperf/websocket-server`，还需要替换 `websocket` 的回调
+
+### 测试
+* 如何使用了 `hyperf/testing`，需要替换 `Hyperf\Testing\Client` 为 `Weskiller\HyperfMiddleware\Test\Client`
 
 # 使用
 
@@ -26,15 +33,33 @@
 ```php
 <?php
     
+use Hyperf\Server\Event;
+use Hyperf\Server\Server;
+
 return [
     'mode' => SWOOLE_PROCESS,
     'servers' => [
         [
+            'name' => 'http',
+            'type' => Server::SERVER_HTTP,
             /**
             *   
             */
             'callbacks' => [
                 Event::ON_REQUEST => [Weskiller\HyperfMiddleware\Http\Server::class, 'onRequest'],
+            ],
+        ],
+        //如果还使用了websocket
+        [
+            'name' => 'websocket',
+            'type' => Server::SERVER_WEBSOCKET,
+            /**
+            *   
+            */
+            'callbacks' => [
+                Event::ON_HAND_SHAKE => [Weskiller\HyperfMiddleware\WebSocket\Server::class, 'onHandShake'],
+                Event::ON_MESSAGE => [Weskiller\HyperfMiddleware\WebSocket\Server::class, 'onMessage'],
+                Event::ON_CLOSE => [Weskiller\HyperfMiddleware\WebSocket\Server::class, 'onClose'],
             ],
         ],
     ],

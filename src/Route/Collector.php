@@ -13,7 +13,6 @@ use Weskiller\HyperfMiddleware\Middleware\Middleware;
 use Weskiller\HyperfMiddleware\Middleware\Direct;
 use Closure;
 use RuntimeException;
-use Throwable;
 
 class Collector extends HyperfRouteCollector
 {
@@ -60,9 +59,17 @@ class Collector extends HyperfRouteCollector
                 $this->dataGenerator->addRoute($method, $data, new Handler($handler, $route, $options));
             }
             if (!$handler instanceof Closure) {
-                [$class, $classMethod] = CoreMiddleware::staticPrepareHandler($handler);
-                $middlewares[] = MiddleCollector::getClassMiddlewares($class);
-                $middlewares[] = MiddleCollector::getMethodMiddlewares($class, $classMethod);
+                try {
+                    @([$class, $classMethod] = CoreMiddleware::staticPrepareHandler($handler));
+                } catch (RuntimeException $e) {
+                    throw new RuntimeException(sprintf('Route: "%s" ,Handler parser error.',$route));
+                }
+                if($class) {
+                    $middlewares[] = MiddleCollector::getClassMiddlewares($class);
+                    if($classMethod) {
+                        $middlewares[] = MiddleCollector::getMethodMiddlewares($class, $classMethod);
+                    }
+                }
             }
             MiddleCollector::addRouteMiddlewares(
                 $this->server,
@@ -76,6 +83,31 @@ class Collector extends HyperfRouteCollector
     public function resolveMiddlewareOption(array &$options) :array
     {
         $middlewares = [];
+
+        if(isset($options[Middleware::Option])) {
+            $middlewares[] = MiddleCollector::instanceMiddleWare($options[Middleware::Option]);
+            unset($options[Middleware::Option]);
+        }
+
+        if(isset($options[Middleware::MultipleOption])) {
+            $middleware = $options[Middleware::MultipleOption];
+            if (is_string($middleware)) {
+                $middlewares[] = MiddleCollector::instanceMiddleWare($options[Middleware::MultipleOption]);
+            } else if($middleware instanceof Middleware) {
+                $middlewares[] = $middleware;
+            } else if(is_array($middleware)) {
+                array_map(
+                    static function($value) use(&$middlewares) {
+                        $middlewares[] = MiddleCollector::instanceMiddleWare($value);
+                    },
+                    $options[Middleware::MultipleOption]
+                );
+            } else {
+                throw new RuntimeException('unknown middleware option');
+            }
+            unset($options[Middleware::MultipleOption]);
+        }
+
         foreach ([Middleware::Option, Middleware::MultipleOption] as $key) {
             if(isset($options[$key])) {
                 $middleware = $options[$key];

@@ -18,6 +18,10 @@
         "php": "^8.0",
         "hyperf/http-server": "^2.2",
         "hyperf/di": "^2.2.4",
-        "hyperf/config": "^2.2"
+        "hyperf/config": "^2.2",
+        "hyperf/websocket-server": "^2.2"
+    },
+    "require-dev": {
+        "hyperf/testing": "^2.2"
     }
 }
