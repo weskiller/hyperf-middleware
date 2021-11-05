@@ -6,9 +6,10 @@ declare(strict_types=1);
 namespace Weskiller\HyperfMiddleware\Http;
 
 use FastRoute\Dispatcher;
-use Hyperf\HttpMessage\Server\Request;
 use Hyperf\HttpServer\CoreMiddleware as HttpCoreMiddleware;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use RuntimeException;
 
 
@@ -16,9 +17,14 @@ class CoreMiddleware extends HttpCoreMiddleware
 {
     public function dispatch(ServerRequestInterface $request): ServerRequestInterface
     {
-        $context = parent::dispatch($request);
+        $serverRequest = parent::dispatch($request);
         //allow Hyperf\HttpMessage\Server\Request instead of Hyperf\HttpMessage\Server\Request pass to middleware
-        return $request instanceof Request ? $context : $request;
+        return $request instanceof Request ? $request : $serverRequest;
+    }
+
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
+    {
+        return parent::process($request instanceof Request ? $request->getRequest() : $request,$handler);
     }
 
     protected function createDispatcher(string $serverName): Dispatcher
